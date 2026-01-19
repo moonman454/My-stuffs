@@ -1,0 +1,70 @@
+
+# coding: utf-8
+
+# In[21]:
+
+
+import pandas as pd
+import os
+from openpyxl import load_workbook
+from openpyxl.worksheet.table import Table, TableStyleInfo
+
+# --------------------------
+# CONFIGURAÇÕES
+# --------------------------
+caminho_entrada = r"C:\Users\rvrodrig\Downloads\data.xlsx"
+caminho_saida = r"C:\Users\rvrodrig\Globo Comunicação e Participações sa\Portal do Planejamento de Estoque - Documentos\Auditoria\Amostra_Unificada.xlsx"
+
+# --------------------------
+# 1) Ler planilha
+# --------------------------
+df = pd.read_excel(caminho_entrada)
+print("Linhas totais:", len(df))
+print("Valores únicos de Auditado:", df["Auditado"].unique())
+print("Valores únicos de CDE:", df["CDE"].unique())
+
+# --------------------------
+# 2) Ignorar os já auditados
+# --------------------------
+df = df[df["Auditado"].isin(["N", ""] ) | df["Auditado"].isna()]
+
+
+print("Linhas após filtro:", len(df))
+
+# Lista CDEs
+lista_cdes = df["CDE"].unique()
+
+# Lista onde vamos guardar as amostras
+amostras = []
+
+# --------------------------
+# 3) Criar amostra unificada
+# --------------------------
+for cde in lista_cdes:
+
+    df_cde = df[df["CDE"] == cde]
+
+    # Se não houver dados após filtro, pula
+    if len(df_cde) == 0:
+        print(f"CDE {cde} ignorado (sem linhas não auditadas).")
+        continue
+
+    # Selecionar 10%
+    n = max(1, int(len(df_cde) * 0.10))
+    n = min(n, len(df_cde))
+
+    amostra = df_cde.sample(n=n, random_state=42)
+
+    amostras.append(amostra)
+
+# --------------------------
+# 4) Concatenar tudo em uma única planilha
+# --------------------------
+df_unificado = pd.concat(amostras, ignore_index=True)
+
+# Salvar
+df_unificado.to_excel(caminho_saida, index=False)
+
+
+print("Amostra unificada salva com sucesso!")
+
