@@ -1,0 +1,8 @@
+Tabela:
+dCalendario = CALENDAR(DATE(2019;01;01);DATE(2030;01;01))
+
+Novas Colunas:
+DiaSemana = FORMAT ( 'dCalendario'[Date].[Date]; "ddd" )
+MesLongo = FORMAT( 'dCalendario'[Date].[Date];"mmmm" )
+MesCurto = FORMAT(  'dCalendario'[Date].[Date];"mmm" )
+Trimestre = FORMAT(  'dCalendario'[Date].[Date];"q" ) & "T"
