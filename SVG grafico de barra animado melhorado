@@ -1,0 +1,67 @@
+Animated RAG Bar Chart = 
+VAR _Percentage = INT([SLA Compliance Rate%] * 100) //Convert SLA percentage to whole number
+// SVG dimensions and positioning variables; created by Bogdan Pavlovic (powerbiwithbogdan)
+VAR _TotalWidth = 1200  // total width
+VAR _TotalHeight = 200 // height for larger elements
+VAR _BarHeight = 80    // progress bar
+VAR _VerticalPadding = (_TotalHeight - _BarHeight) /2  // Center the bar vertically
+VAR _LabelWidth = 250  // label area
+VAR _LabelHeight =130  // label area
+VAR _LabelVerticalPadding = (_TotalHeight - _LabelHeight) / 2  // Center the label vertically
+VAR _MaxBarWidth = _TotalWidth - _LabelWidth - 60 // 60 = 20px left margin + 40px right margin
+VAR _ProgressBar = _Percentage * (_MaxBarWidth / 100) // Dynamic width calculation
+// Determine gradient stops based on percentage with smooth transitions
+VAR _ColorStops =
+    "<stop offset='0%' style='stop-color:#FF0000'/>" &           // Red start
+    "<stop offset='30%' style='stop-color:#FF0000'/>" &          // Hold red until 30%
+    "<stop offset='40%' style='stop-color:#FF7F00'/>" &          // Blend red-orange
+    "<stop offset='50%' style='stop-color:#FFA500'/>" &          // Amber middle
+    "<stop offset='65%' style='stop-color:#FFD580'/>" &          // Light amber-yellowish
+    "<stop offset='80%' style='stop-color:#ADFF2F'/>" &          // Yellow-green
+    "<stop offset='90%' style='stop-color:#32CD32'/>" &          // Lighter green
+    "<stop offset='100%' style='stop-color:#00FF00'/>"           // Full green
+// Construct the SVG image with dynamic values
+RETURN
+    "data:image/svg+xml;utf8," &
+    UNICHAR(10) &
+    "<svg width='" & _TotalWidth & "' height='" & _TotalHeight & "' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='https://lnkd.in/dZ5ikEfb' display='block' overflow='visible' id='svg_" & RAND() & "'>" &
+    UNICHAR(10) &
+    "    <defs>" &
+    UNICHAR(10) &
+    "        <!-- Gradient with smooth color transitions -->" &
+    UNICHAR(10) &
+    "        <linearGradient id='gradient' x1='0%' y1='0%' x2='100%' y2='0%' gradientUnits='userSpaceOnUse'>" &
+    UNICHAR(10) &
+            _ColorStops &
+    UNICHAR(10) &
+    "        </linearGradient>" &
+    UNICHAR(10) &
+    "    </defs>" &
+    UNICHAR(10) &
+    "    <!-- Background (light grey) rectangle for the entire SVG -->" &
+    UNICHAR(10) &
+    "    <rect x='0' y='0' width='" & _TotalWidth & "' height='" & _TotalHeight & "' rx='40' ry='40' style='fill: #e5e5e5'/>" & // Main rectangle
+    UNICHAR(10) &
+    "    <!-- Full-width grey background bar showing 100% scale -->" &
+    UNICHAR(10) &
+    "    <rect x='" & (_LabelWidth + 20) & "' y='" & _VerticalPadding & "' width='" & _MaxBarWidth & "' height='" & _BarHeight & "' rx='20' ry='20' style='fill: #ffffff'/>" & //remaining percentage bar you can change color by changing fill hex
+    UNICHAR(10) &
+    "    <!-- Rectangle for the label (percentage number) background -->" &
+    UNICHAR(10) &
+    "    <rect x='10' y='" & _LabelVerticalPadding & "' width='" & _LabelWidth & "' height='" & _LabelHeight & "' rx='30' ry='30' style='fill: #b0b0b0' />" & // value rectangle background
+    UNICHAR(10) &
+    "    <!-- Label text displaying the percentage -->" &
+    UNICHAR(10) &
+    "    <text x='" & (10 + _LabelWidth/2) & "' y='" & (_LabelVerticalPadding + _LabelHeight/2 + 5) & "' fill='white' text-anchor='middle' dominant-baseline='middle' font-family='Arial' font-weight='bold' font-size='120'>" & _Percentage & "<tspan font-size='80' fill='white'>%</tspan></text>" & // increase value size by chaning font-size
+    UNICHAR(10) &
+    "    <!-- Progress bar rectangle with animation -->" &
+    UNICHAR(10) &
+    "    <rect x='" & (_LabelWidth + 20) & "' y='" & _VerticalPadding & "' width='" & _ProgressBar & "' height='" & _BarHeight & "' rx='20' ry='20' style='fill: url(#gradient)'>" & //rx & ry Rounds the corners of the rectangle with a 20px radius —pill-shape
+    UNICHAR(10) &
+    "        <!-- Animation to gradually increase the width of the progress bar -->" &
+    UNICHAR(10) &
+    "        <animate attributeName='width' from='0' to='" & _ProgressBar & "' dur='2s' fill='freeze'/>" &
+    UNICHAR(10) &
+    "    </rect>" &
+    UNICHAR(10) &
+    "</svg>"
