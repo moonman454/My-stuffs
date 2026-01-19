@@ -1,0 +1,6 @@
+//barra de progresso para powerapps, barra na cor verde com fundo cinza
+//Onde esta Value(Label2_11.Text), deve ser substituido pela sua variavel.
+
+"<div style='width:100%; height:20px; background-color:#ddd; border-radius:10px; overflow:hidden;'>
+    <div style='height:100%; width:" &  Value(Label2_11.Text) * 100 & "% ; background-color:#4CAF50;'></div>
+</div>"
