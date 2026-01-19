@@ -1,0 +1,56 @@
+Velocimetro Com Agulha SVG = 
+-- 1. Definição do Valor (Substitua pelos seus dados)
+VAR ValorReal = [SuaMedidaDeVendas] 
+VAR Meta = [SuaMedidaDeMeta]
+-- Proteção contra divisão por zero
+VAR Percentual = IF(Meta = 0, 0, DIVIDE(ValorReal, Meta))
+
+-- Limita o percentual entre 0 e 1 (0% a 100%) para a agulha não sair do gráfico
+VAR PercentualLimpo = MIN(MAX(Percentual, 0), 1)
+
+-- 2. Cálculos Geométricos
+VAR Raio = 40
+VAR Circunferencia = 2 * PI() * Raio
+VAR MetadeCircunferencia = Circunferencia / 2
+VAR Preenchimento = PercentualLimpo * MetadeCircunferencia
+-- Calcula o ângulo de rotação da agulha (0% = 0 graus, 100% = 180 graus)
+VAR AnguloRotacao = PercentualLimpo * 180
+
+-- 3. Definição de Cores Dinâmicas
+VAR CorBarra = IF(PercentualLimpo < 0.5, "#E63946", IF(PercentualLimpo < 0.8, "#F4A261", "#2A9D8F"))
+VAR CorAgulha = "#333333" -- Cinza escuro para a agulha
+
+-- 4. Montagem do Código SVG
+VAR SVG = "
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 60'>
+    <defs>
+        <filter id='shadow' x='-20%' y='-20%' width='140%' height='140%'>
+            <feGaussianBlur in='SourceAlpha' stdDeviation='1'/>
+            <feOffset dx='1' dy='1' result='offsetblur'/>
+            <feFlood flood-color='rgba(0,0,0,0.3)'/>
+            <feComposite in2='offsetblur' operator='in'/>
+            <feMerge>
+                <feMergeNode/>
+                <feMergeNode in='SourceGraphic'/>
+            </feMerge>
+        </filter>
+    </defs>
+
+    <circle cx='50' cy='50' r='" & Raio & "' fill='transparent' stroke='#E0E0E0' stroke-width='10' stroke-dasharray='" & MetadeCircunferencia & " " & Circunferencia & "' transform='rotate(180 50 50)' />
+
+    <circle cx='50' cy='50' r='" & Raio & "' fill='transparent' stroke='" & CorBarra & "' stroke-width='10' stroke-dasharray='" & Preenchimento & " " & Circunferencia & "' transform='rotate(180 50 50)' style='transition: stroke-dasharray 0.5s ease-out' />
+
+    <g filter='url(#shadow)' transform='rotate(" & AnguloRotacao & " 50 50)' style='transition: transform 0.5s ease-out'>
+        <polygon points='12,50 50,47 50,53' fill='" & CorAgulha & "' />
+        
+        <circle cx='50' cy='50' r='4' fill='" & CorAgulha & "'/>
+    </g>
+
+    <text x='50' y='60' text-anchor='middle' font-family='Segoe UI, sans-serif' font-size='14' font-weight='bold' fill='" & CorAgulha & "'>
+        " & FORMAT(Percentual, "0%") & "
+    </text>
+</svg>
+"
+
+RETURN
+"data:image/svg+xml;utf8," & SVG
