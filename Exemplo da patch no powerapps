@@ -1,0 +1,61 @@
+//Patch em duas listas no memso botão
+
+Patch(
+    Lista_Aditoria_Equipamentos;
+    LookUp(
+        Lista_Aditoria_Equipamentos;
+        ThisItem.ID = ID           //atualizar o ID correto da galeria
+    );
+    {
+        Foto_Equipamento: First(ColImages).Value;
+        Foto_Equipamento2: Last(ColImages).Value;
+        Auditado: "S";
+        Latitude:VarLat;
+        Longitude:VarLong;
+        Coleta_Fim:Now()
+        
+    
+    }
+)
+
+;;
+
+
+
+//segunda lista do patch
+
+Patch(Lista_Aditoria_Equipamentos_Realizados;
+
+{
+    Título:ThisItem.Título;
+    ID_Raiz:ThisItem.ID_Raiz;
+    Ativo:ThisItem.Ativo;
+    Serial_Number:ThisItem.Serial_Number;
+    Descrição:ThisItem.Descrição;
+    Modelo:ThisItem.Modelo;
+    Inventory_Date:ThisItem.Inventory_Date;
+    Sala:ThisItem.Sala;
+    Rack:ThisItem.Rack;
+    Prateleira:ThisItem.Prateleira;
+    StatusInvGeral:ThisItem.StatusInvGeral;
+    'Código Prateleira':ThisItem.'Código Prateleira';
+    Updated_By_User:ThisItem.Updated_By_User;
+    Notes:ThisItem.Notes;
+    ID_Documento:ThisItem.ID_Documento;
+    PGM:ThisItem.PGM;
+    'PGM.1':ThisItem.'PGM.1';
+    Description:ThisItem.Description;
+    DtExpedição:ThisItem.DtExpedição;
+    Foto_Equipamento: First(ColImages).Value;
+    Foto_Equipamento2: Last(ColImages).Value;
+    Auditado: "S";
+    Latitude:VarLat;
+    Longitude:VarLong;
+    Inicio_Coleta:ThisItem.Inicio_Coleta;
+    Coleta_Fim:ThisItem.Coleta_Fim
+}
+
+);;
+
+//reseta coleção de imagem.
+Clear(ColImages);;
