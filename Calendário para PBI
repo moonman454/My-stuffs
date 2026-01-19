@@ -6,3 +6,52 @@ DiaSemana = FORMAT ( 'dCalendario'[Date].[Date]; "ddd" )
 MesLongo = FORMAT( 'dCalendario'[Date].[Date];"mmmm" )
 MesCurto = FORMAT(  'dCalendario'[Date].[Date];"mmm" )
 Trimestre = FORMAT(  'dCalendario'[Date].[Date];"q" ) & "T"
+
+
+
+--------------LINGUAGE M ---------------------------------
+
+Abra o Power BI Desktop.
+
+Clique em Transformar Dados para abrir o Power Query.
+
+Na guia "Página Inicial", clique em Nova Fonte > Consulta Nula.
+
+Com a nova consulta selecionada, clique na guia Exibir e depois em Editor Avançado.
+
+Apague tudo o que estiver lá e cole o código acima.
+
+Clique em Concluído e renomeie a consulta para Calendario ou dCalendario.
+
+//FORMULA
+
+let
+    // Defina aqui o intervalo de datas
+    DataInicial = #date(2023, 1, 1), 
+    DataFinal = Date.EndOfYear(DateTime.Date(DateTime.LocalNow())),
+    
+    // Gera a lista de datas
+    ListaDatas = List.Dates(DataInicial, Number.From(DataFinal) - Number.From(DataInicial) + 1, #duration(1,0,0,0)),
+    
+    // Converte a lista em tabela
+    TabelaBase = Table.FromList(ListaDatas, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    
+    // Renomeia a coluna principal e define o tipo de dados
+    #"Colunas Renomeadas" = Table.RenameColumns(TabelaBase,{{"Column1", "Data"}}),
+    #"Tipo Alterado" = Table.TransformColumnTypes(#"Colunas Renomeadas",{{"Data", type date}}),
+    
+    // Adição de colunas temporais
+    #"Ano Adicionado" = Table.AddColumn(#"Tipo Alterado", "Ano", each Date.Year([Data]), Int64.Type),
+    #"Mês Adicionado" = Table.AddColumn(#"Ano Adicionado", "Mês Num", each Date.Month([Data]), Int64.Type),
+    #"Nome do Mês Adicionado" = Table.AddColumn(#"Mês Adicionado", "Mês Nome", each Text.Proper(Date.MonthName([Data])), type text),
+    #"Trimestre Adicionado" = Table.AddColumn(#"Nome do Mês Adicionado", "Trimestre", each Date.QuarterOfYear([Data]), Int64.Type),
+    #"Semana do Ano Adicionada" = Table.AddColumn(#"Trimestre Adicionado", "Semana do Ano", each Date.WeekOfYear([Data]), Int64.Type),
+    #"Dia Adicionado" = Table.AddColumn(#"Semana do Ano Adicionada", "Dia", each Date.Day([Data]), Int64.Type),
+    #"Dia da Semana Adicionado" = Table.AddColumn(#"Dia Adicionado", "Dia da Semana Num", each Date.DayOfWeek([Data]), Int64.Type),
+    #"Nome do Dia Adicionado" = Table.AddColumn(#"Dia da Semana Adicionado", "Dia da Semana Nome", each Text.Proper(Date.DayOfWeekName([Data])), type text),
+    
+    // Colunas úteis para filtros e ordenação
+    #"Mês/Ano" = Table.AddColumn(#"Nome do Dia Adicionado", "Mês/Ano", each Text.Start([Mês Nome], 3) & "/" & Text.From([Ano]), type text),
+    #"ID Mês Ano" = Table.AddColumn(#"Mês/Ano", "ID Mês Ano", each ([Ano] * 100) + [Mês Num], Int64.Type)
+in
+    #"ID Mês Ano"
