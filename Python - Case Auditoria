@@ -1,70 +1,355 @@
-
 # coding: utf-8
-
-# In[21]:
-
-
-import pandas as pd
+"""
+audita_Equps_gui.py
+Aplicativo GUI para gerar amostra unificada por CDE.
+Requisitos (instalar antes de empacotar/executar):
+    py -m pip install pandas openpyxl xlsxwriter ttkbootstrap
+Coloque o arquivo de ícone 'globo.ico' na mesma pasta do script (opcional).
+"""
 import os
-from openpyxl import load_workbook
-from openpyxl.worksheet.table import Table, TableStyleInfo
+import threading
+import queue
+import time
+import traceback
+import pandas as pd
+import tkinter as tk
+from tkinter import filedialog, messagebox
 
-# --------------------------
-# CONFIGURAÇÕES
-# --------------------------
-caminho_entrada = r"C:\Users\rvrodrig\Downloads\data.xlsx"
-caminho_saida = r"C:\Users\rvrodrig\Globo Comunicação e Participações sa\Portal do Planejamento de Estoque - Documentos\Auditoria\Amostra_Unificada.xlsx"
+# Try to import ttkbootstrap; fallback to ttk if not available
+try:
+    import ttkbootstrap as tb
+    from ttkbootstrap.constants import *
+    TB_AVAILABLE = True
+except Exception:
+    import tkinter.ttk as ttk
+    TB_AVAILABLE = False
 
-# --------------------------
-# 1) Ler planilha
-# --------------------------
-df = pd.read_excel(caminho_entrada)
-print("Linhas totais:", len(df))
-print("Valores únicos de Auditado:", df["Auditado"].unique())
-print("Valores únicos de CDE:", df["CDE"].unique())
+# ---------------------------
+# Configurações iniciais
+# ---------------------------
+APP_TITLE = "Gerador de Amostra CDE - Globo"
+DEFAULT_ICON = "globo.ico"  # coloque este arquivo no mesmo diretório do .py
+SPLASH_TIME_MS = 1400
 
-# --------------------------
-# 2) Ignorar os já auditados
-# --------------------------
-df = df[df["Auditado"].isin(["N", ""] ) | df["Auditado"].isna()]
+# ---------------------------
+# Funções de processamento
+# ---------------------------
+def gerar_amostra_worker(caminho_entrada, caminho_saida, progress_q, stop_event):
+    """
+    Função que roda em thread separada. Envia updates para a queue 'progress_q'.
+    """
+    try:
+        progress_q.put(("status", "Lendo planilha..."))
+        # pequena pausa para mostrar progresso visual
+        time.sleep(0.3)
 
+        # Leitura
+        if not os.path.exists(caminho_entrada):
+            raise FileNotFoundError(f"Arquivo de entrada não encontrado:\n{caminho_entrada}")
 
-print("Linhas após filtro:", len(df))
+        df = pd.read_excel(caminho_entrada)
+        total_rows = len(df)
+        progress_q.put(("progress", 5))
+        progress_q.put(("log", f"Linhas totais: {total_rows}"))
+        time.sleep(0.2)
 
-# Lista CDEs
-lista_cdes = df["CDE"].unique()
+        # Verifica colunas necessárias
+        if "Auditado" not in df.columns or "CDE" not in df.columns:
+            raise Exception("O arquivo deve conter as colunas 'Auditado' e 'CDE'.")
 
-# Lista onde vamos guardar as amostras
-amostras = []
+        progress_q.put(("status", "Filtrando registros não auditados..."))
+        df_filtrado = df[df["Auditado"].isin(["N", ""]) | df["Auditado"].isna()]
+        filtered_rows = len(df_filtrado)
+        progress_q.put(("log", f"Linhas após filtro: {filtered_rows}"))
+        progress_q.put(("progress", 15))
+        time.sleep(0.2)
 
-# --------------------------
-# 3) Criar amostra unificada
-# --------------------------
-for cde in lista_cdes:
+        if filtered_rows == 0:
+            raise Exception("Nenhuma linha com 'Auditado = N' encontrada.")
 
-    df_cde = df[df["CDE"] == cde]
+        # Preparar grupos por CDE
+        cdes = list(df_filtrado["CDE"].unique())
+        n_cdes = len(cdes)
+        if n_cdes == 0:
+            raise Exception("Nenhum CDE encontrado nos dados filtrados.")
 
-    # Se não houver dados após filtro, pula
-    if len(df_cde) == 0:
-        print(f"CDE {cde} ignorado (sem linhas não auditadas).")
-        continue
+        progress_q.put(("status", "Criando amostras por CDE..."))
+        amostras = []
+        # vamos atualizar a barra conforme os CDEs são processados
+        for i, cde in enumerate(cdes, start=1):
+            if stop_event.is_set():
+                raise Exception("Operação cancelada pelo usuário.")
+            df_cde = df_filtrado[df_filtrado["CDE"] == cde]
+            if len(df_cde) == 0:
+                progress_q.put(("log", f"CDE {cde}: sem linhas (ignorando)"))
+                continue
+            n = max(1, int(len(df_cde) * 0.10))
+            n = min(n, len(df_cde))
+            amostra = df_cde.sample(n=n, random_state=42)
+            amostras.append(amostra)
+            # progress incremental
+            frac = int(15 + (i / n_cdes) * 60)  # mapeia entre 15 e 75
+            progress_q.put(("progress", min(frac, 75)))
+            progress_q.put(("log", f"CDE {cde}: {len(df_cde)} linhas -> amostra {len(amostra)}"))
+            time.sleep(0.05)
 
-    # Selecionar 10%
-    n = max(1, int(len(df_cde) * 0.10))
-    n = min(n, len(df_cde))
+        if not amostras:
+            raise Exception("Nenhuma amostra foi gerada. Verifique os dados.")
 
-    amostra = df_cde.sample(n=n, random_state=42)
+        progress_q.put(("status", "Concatenando e salvando..."))
+        df_unificado = pd.concat(amostras, ignore_index=True)
 
-    amostras.append(amostra)
+        # Cria pasta de saída se preciso
+        pasta_saida = os.path.dirname(caminho_saida)
+        if pasta_saida and not os.path.exists(pasta_saida):
+            os.makedirs(pasta_saida, exist_ok=True)
 
-# --------------------------
-# 4) Concatenar tudo em uma única planilha
-# --------------------------
-df_unificado = pd.concat(amostras, ignore_index=True)
+        # Salva Excel
+        df_unificado.to_excel(caminho_saida, index=False)
+        progress_q.put(("progress", 95))
+        progress_q.put(("status", "Finalizando..."))
+        time.sleep(0.2)
+        progress_q.put(("progress", 100))
+        progress_q.put(("done", f"Arquivo salvo em:\n{caminho_saida}"))
 
-# Salvar
-df_unificado.to_excel(caminho_saida, index=False)
+    except Exception as e:
+        tb = traceback.format_exc()
+        progress_q.put(("error", f"{str(e)}\n\nDetalhes:\n{tb}"))
 
+# ---------------------------
+# UI: Splash Screen
+# ---------------------------
+def show_splash(root):
+    splash = tk.Toplevel()
+    splash.overrideredirect(True)
+    w = 480
+    h = 220
+    ws = root.winfo_screenwidth()
+    hs = root.winfo_screenheight()
+    x = (ws // 2) - (w // 2)
+    y = (hs // 2) - (h // 2) - 50
+    splash.geometry(f"{w}x{h}+{x}+{y}")
 
-print("Amostra unificada salva com sucesso!")
+    # Splash frame (corporate blue)
+    frame = tk.Frame(splash, bg="#0b4f88")  # cor corporativa azul
+    frame.pack(fill="both", expand=True)
 
+    # Logo (se ícone .ico disponível, tentamos mostrar texto + ícone)
+    try:
+        if os.path.exists(DEFAULT_ICON):
+            # use icon on title if available
+            splash.iconbitmap(DEFAULT_ICON)
+    except Exception:
+        pass
+
+    label_title = tk.Label(frame, text="Globo - Gerador de Amostra", bg="#0b4f88", fg="white", font=("Segoe UI", 18, "bold"))
+    label_title.place(relx=0.5, rely=0.35, anchor="center")
+
+    label_sub = tk.Label(frame, text="Carregando aplicativo...", bg="#0b4f88", fg="white", font=("Segoe UI", 11))
+    label_sub.place(relx=0.5, rely=0.58, anchor="center")
+
+    root.update()
+    root.after(SPLASH_TIME_MS, splash.destroy)
+    root.wait_window(splash)
+
+# ---------------------------
+# UI: Janela Principal
+# ---------------------------
+class App:
+    def __init__(self, root):
+        self.root = root
+        self.stop_event = threading.Event()
+        self.thread = None
+        self.progress_q = queue.Queue()
+
+        # Define os caminhos padrão 📍
+        self.DEFAULT_INPUT_PATH = r"C:\Users\rvrodrig\Downloads\data.xlsx"
+        self.DEFAULT_OUTPUT_PATH = r"C:\Users\rvrodrig\Globo Comunicação e Participações sa\Portal do Planejamento de Estoque - Documentos\Auditoria\Amostra_Unificada.xlsx"
+
+        # Use ttkbootstrap if disponível
+        if TB_AVAILABLE:
+            self.style = tb.Style("cosmo")  # tema clean; pode mudar (litera: cosmo, solar, flatly...)
+            self.main = self.style.master
+        else:
+            self.main = root
+
+        self.main.title(APP_TITLE)
+        try:
+            if os.path.exists(DEFAULT_ICON):
+                self.main.iconbitmap(DEFAULT_ICON)
+        except Exception:
+            pass
+
+        self.main.geometry("700x600")
+        self.main.resizable(False, False)
+        self.build_ui()
+        
+        # --- NOVO CÓDIGO AQUI ---
+        # 1. Insere o caminho padrão de entrada
+        self.entry_input.insert(0, self.DEFAULT_INPUT_PATH)
+        # 2. Insere o caminho padrão de saída
+        self.entry_output.insert(0, self.DEFAULT_OUTPUT_PATH)
+        # ------------------------
+        
+        self.root.after(200, self._periodic_check)
+
+    def build_ui(self):
+        # Header
+        header = tk.Frame(self.main, bg="#0b4f88")
+        header.place(x=0, y=0, relwidth=1, height=70)
+        title = tk.Label(header, text="Gerador de Amostra Unificada - Auditoria CDE",
+                         bg="#0b4f88", fg="white", font=("Segoe UI", 14, "bold"))
+        title.pack(pady=12, padx=10, anchor="w")
+
+        # Content frame
+        frame = tk.Frame(self.main, bd=0, padx=12, pady=12)
+        frame.place(x=12, y=84, relwidth=0.96, relheight=0.75)
+
+        # Input file
+        lbl_in = tk.Label(frame, text="Arquivo de entrada (Excel):", anchor="w")
+        lbl_in.pack(fill="x")
+        row_in = tk.Frame(frame)
+        row_in.pack(fill="x", pady=(2, 8))
+        self.entry_input = tk.Entry(row_in)
+        self.entry_input.pack(side="left", fill="x", expand=True)
+        btn_browse_in = tk.Button(row_in, text="Selecionar", width=12, command=self.browse_input)
+        btn_browse_in.pack(side="left", padx=(8,0))
+
+        # Output file
+        lbl_out = tk.Label(frame, text="Arquivo de saída (Salvar como .xlsx):", anchor="w")
+        lbl_out.pack(fill="x")
+        row_out = tk.Frame(frame)
+        row_out.pack(fill="x", pady=(2, 8))
+        self.entry_output = tk.Entry(row_out)
+        self.entry_output.pack(side="left", fill="x", expand=True)
+        btn_browse_out = tk.Button(row_out, text="Selecionar", width=12, command=self.browse_output)
+        btn_browse_out.pack(side="left", padx=(8,0))
+
+        # Buttons
+        btn_frame = tk.Frame(frame)
+        btn_frame.pack(fill="x", pady=(8,6))
+        self.btn_run = tk.Button(btn_frame, text="Gerar Amostra", width=18, command=self.start_process)
+        self.btn_run.pack(side="left")
+        self.btn_cancel = tk.Button(btn_frame, text="Cancelar", width=12, command=self.cancel_process, state="disabled")
+        self.btn_cancel.pack(side="left", padx=(8,0))
+
+        # Progress bar and status
+        self.progress_var = tk.DoubleVar(value=0)
+        # use ttk.Progressbar (works with or without ttkbootstrap)
+        try:
+            if TB_AVAILABLE:
+                self.progressbar = tb.Progressbar(frame, bootstyle="success striped", variable=self.progress_var, maximum=100)
+            else:
+                self.progressbar = tk.ttk.Progressbar(frame, variable=self.progress_var, maximum=100)
+        except Exception:
+            # fallback if tb.Progressbar not available
+            import tkinter.ttk as ttk_local
+            self.progressbar = ttk_local.Progressbar(frame, variable=self.progress_var, maximum=100)
+        self.progressbar.pack(fill="x", pady=(10,6))
+
+        self.status_label = tk.Label(frame, text="Pronto", anchor="w")
+        self.status_label.pack(fill="x")
+
+        # Log box
+        lbl_log = tk.Label(frame, text="Registro:")
+        lbl_log.pack(anchor="w", pady=(8,2))
+        self.txt_log = tk.Text(frame, height=6, state="disabled", wrap="word")
+        self.txt_log.pack(fill="both", expand=True)
+
+    # Browse functions
+    def browse_input(self):
+        path = filedialog.askopenfilename(title="Selecionar arquivo de entrada", filetypes=[("Excel files","*.xlsx;*.xls")])
+        if path:
+            self.entry_input.delete(0, tk.END)
+            self.entry_input.insert(0, path)
+
+    def browse_output(self):
+        path = filedialog.asksaveasfilename(title="Selecionar arquivo de saída", defaultextension=".xlsx",
+                                            filetypes=[("Excel files","*.xlsx")])
+        if path:
+            self.entry_output.delete(0, tk.END)
+            self.entry_output.insert(0, path)
+
+    # Start processing in a new thread
+    def start_process(self):
+        entrada = self.entry_input.get().strip()
+        saida = self.entry_output.get().strip()
+
+        if not entrada:
+            messagebox.showwarning("Atenção", "Selecione o arquivo de entrada.")
+            return
+        if not saida:
+            messagebox.showwarning("Atenção", "Selecione o local/arquivo de saída.")
+            return
+
+        # disable controls
+        self.btn_run.config(state="disabled")
+        self.btn_cancel.config(state="normal")
+        self.stop_event.clear()
+        self.progress_var.set(0)
+        self.status_label.config(text="Iniciando...")
+        self._log(f"Iniciando processamento: {os.path.basename(entrada)} -> {os.path.basename(saida)}")
+
+        # start thread
+        self.thread = threading.Thread(target=gerar_amostra_worker, args=(entrada, saida, self.progress_q, self.stop_event), daemon=True)
+        self.thread.start()
+
+    def cancel_process(self):
+        if messagebox.askyesno("Cancelar", "Deseja realmente cancelar a operação em andamento?"):
+            self.stop_event.set()
+            self._log("Solicitado cancelamento...")
+
+    # Periodic checks to update UI from queue
+    def _periodic_check(self):
+        try:
+            while True:
+                item = self.progress_q.get_nowait()
+                kind, payload = item
+                if kind == "status":
+                    self.status_label.config(text=payload)
+                elif kind == "progress":
+                    try:
+                        val = float(payload)
+                        self.progress_var.set(val)
+                    except Exception:
+                        pass
+                elif kind == "log":
+                    self._log(payload)
+                elif kind == "done":
+                    self.progress_var.set(100)
+                    self.status_label.config(text="Concluído")
+                    self._log(payload)
+                    messagebox.showinfo("Sucesso", f"Amostra gerada com sucesso!\n\n{payload}")
+                    self.btn_run.config(state="normal")
+                    self.btn_cancel.config(state="disabled")
+                elif kind == "error":
+                    self._log("ERRO: " + str(payload))
+                    messagebox.showerror("Erro", f"Ocorreu um erro:\n\n{payload}")
+                    self.status_label.config(text="Erro")
+                    self.btn_run.config(state="normal")
+                    self.btn_cancel.config(state="disabled")
+        except queue.Empty:
+            pass
+        # re-schedule
+        self.root.after(150, self._periodic_check)
+
+    def _log(self, texto):
+        self.txt_log.config(state="normal")
+        self.txt_log.insert("end", f"{time.strftime('%H:%M:%S')} - {texto}\n")
+        self.txt_log.see("end")
+        self.txt_log.config(state="disabled")
+
+# ---------------------------
+# Main
+# ---------------------------
+def main():
+    root = tk.Tk()
+    # hide main window while splash shows
+    root.withdraw()
+    show_splash(root)
+    root.deiconify()
+    app = App(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
