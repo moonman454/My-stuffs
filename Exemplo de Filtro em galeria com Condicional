@@ -1,0 +1,50 @@
+//Filtrando galeria de acordo com o IF aplicado
+
+
+If(ComboBox3.Selected.Value = Blank();
+
+SortByColumns(
+    
+        Filter(
+            Lista_Aditoria_Equipamentos;
+            Título = ComboBox1.Selected.Value;
+            Auditado = VarAuditarFt
+       );
+      
+    
+    "Rack";
+    If(
+        SortDescending1;
+    
+        SortOrder.Ascending;
+        SortOrder.Descending
+    )
+);
+
+
+
+SortByColumns(
+
+//segunda condicional, caso retorne false
+
+        Filter(
+            Lista_Aditoria_Equipamentos;
+            Título = ComboBox1.Selected.Value;
+            Auditado = VarAuditarFt;
+            StatusInvGeral = Switch_Status_Ativo_Txt.Text
+           
+            
+            
+       );
+      
+    
+    "Rack";
+    If(
+        SortDescending1;
+    
+        SortOrder.Ascending;
+        SortOrder.Descending
+    )
+)
+
+)
