@@ -1,0 +1,185 @@
+Navigate(Carregando);;
+
+Patch(BD_Movimentacoes_SP; Defaults(BD_Movimentacoes_SP); 
+{Título: Gallery1_1.Selected.Título	;
+//MV_fornecedor: Mov_Fornecedor;
+//MV_ADM:"";
+//MV_NF:Mov_NF;
+MV_Descrição:Gallery1_1.Selected.Descrição;
+Quantidade:TextInput7.Text ;
+MV_UF:"";
+MV_TIPO:"Ag. Aprovação";
+//MV_PROGRAMA:Mv_programa;
+//MV_AREA: mv_area;
+MV_Operação:"Ag. Aprovação";
+MV_Almoxarife:User().FullName;
+data_operação: Now();
+MV_Solicitante:solicitante_saida_3.Selected.Email;
+Setor_Mov:Dropdown_Principal_setor.Selected.Value;
+Exped_Descarte_Area:"";
+Exped_Descarte_Auorizado_por:"";
+Exped_Descarte_Produto:"";
+Local:"";
+Observação:TextInput7_2.Text;
+Categoria_Do_Item_Mov:Gallery1_1.Selected.Categoria_do_Item
+
+}
+)
+
+;;
+
+// Código para o botão - versão com HTML estilizado
+
+
+
+
+Set(varDestinatario; "Rodrigo.Vrodrigues@g.globo" & ";"  & DataCardValue86.Selected.Email );;
+Set(varAssunto; "Notificação de Item Solicitado pelo Cliente");;
+Set(varTipoMov; "Solicitação");;
+Set(varSolicitante2; solicitante_saida_3.Selected.Email);;
+Set(varPrograma2; Gallery1_1.Selected.Programa);;
+Set(varQTD2; TextInput7.Text);;
+Set(varNF2; "Não Aplicavél");;
+Set(varObservacao2; "Não Aplicavél");;
+Set(varDescricao2; TextInput7_1.Text);;
+Set(varData; Text(Today(); "dd/mm/yyyy"));;
+
+// Criar o corpo do email em HTML
+Set(
+    varCorpoHTML;
+    "<!DOCTYPE html>
+<html>
+<head>
+<meta charset='UTF-8'>
+</head>
+
+<body style='margin:0; padding:0; background-color:#f4f4f4; font-family:Segoe UI, Tahoma, Arial, sans-serif;'>
+
+<table width='100%' cellpadding='0' cellspacing='0' style='background-color:#f4f4f4; padding:20px;'>
+<tr>
+<td align='center'>
+
+<!-- CONTAINER -->
+<table width='600' cellpadding='0' cellspacing='0' style='background-color:#ffffff; border-collapse:collapse;'>
+
+<!-- HEADER -->
+<tr>
+<td style='background-color:#667eea; color:#ffffff; padding:25px; text-align:center;'>
+<h1 style='margin:0; font-size:24px;'>Solicitação de Separação de Item Cliente/Parceiro </h1>
+</td>
+</tr>
+
+<!-- CONTENT -->
+<tr>
+<td style='padding:30px; color:#333333; font-size:14px;'>
+
+<p style='margin-top:0;'>Olá,</p>
+<p>Você recebeu uma nova mensagem através do sistema.</p>
+
+<!-- INFO BOX -->
+<table width='100%' cellpadding='10' cellspacing='0' style='background-color:#f8f9fa; border-left:4px solid #667eea; margin-bottom:15px;'>
+<tr>
+<td><strong>👤 Solicitante:</strong><br/>" & varSolicitante2 & "</td>
+</tr>
+</table>
+
+<table width='100%' cellpadding='10' cellspacing='0' style='background-color:#f8f9fa; border-left:4px solid #667eea; margin-bottom:15px;'>
+<tr>
+<td><strong>🔃 Tipo Movimentação:</strong><br/>" & varTipoMov & "</td>
+</tr>
+</table>
+
+<table width='100%' cellpadding='10' cellspacing='0' style='background-color:#f8f9fa; border-left:4px solid #667eea; margin-bottom:15px;'>
+<tr>
+<td><strong>📖 Programa:</strong><br/>" & varPrograma2 & "</td>
+</tr>
+</table>
+
+<table width='100%' cellpadding='10' cellspacing='0' style='background-color:#f8f9fa; border-left:4px solid #667eea; margin-bottom:15px;'>
+<tr>
+<td><strong>📖 GMM:</strong><br/>Não Aplicável</td>
+</tr>
+</table>
+
+<table width='100%' cellpadding='10' cellspacing='0' style='background-color:#f8f9fa; border-left:4px solid #667eea; margin-bottom:15px;'>
+<tr>
+<td><strong>📖 NF:</strong><br/>" & varNF2 & "</td>
+</tr>
+</table>
+
+<table width='100%' cellpadding='10' cellspacing='0' style='background-color:#f8f9fa; border-left:4px solid #667eea; margin-bottom:15px;'>
+<tr>
+<td><strong>📖 Descrição:</strong><br/>" & varDescricao2 & "</td>
+</tr>
+</table>
+
+<table width='100%' cellpadding='10' cellspacing='0' style='background-color:#f8f9fa; border-left:4px solid #667eea; margin-bottom:20px;'>
+<tr>
+<td><strong>✅ Quantidade:</strong><br/>" & varQTD2 & "</td>
+</tr>
+</table>
+
+<hr style='border:none; border-top:1px solid #e0e0e0; margin:25px 0;' />
+
+<p style='color:#667eea; font-size:16px; margin-bottom:10px;'><strong>💬 Mensagem</strong></p>
+
+<table width='100%' cellpadding='12' cellspacing='0' style='border:1px solid #e0e0e0; background-color:#ffffff;'>
+<tr>
+<td>Data Movimentação: " & varData & "</td>
+</tr>
+</table>
+
+<!-- BUTTON -->
+<table width='100%' cellpadding='0' cellspacing='0' style='margin-top:30px;'>
+<tr>
+<td align='center'>
+<a href='https://apps.powerapps.com/play/e/default-a7cdc447-3b29-4b41-b73e-8a2cb54b06c6/a/cb044f57-4b75-4dfd-a174-cb206d93627b?tenantId=a7cdc447-3b29-4b41-b73e-8a2cb54b06c6'
+   style='background-color:#667eea; color:#ffffff; text-decoration:none; padding:12px 30px; font-weight:bold; display:inline-block;'>
+Acessar Sistema
+</a>
+</td>
+</tr>
+</table>
+
+</td>
+</tr>
+
+<!-- FOOTER -->
+<tr>
+<td style='background-color:#f8f9fa; text-align:center; padding:15px; font-size:12px; color:#666666;'>
+<p style='margin:5px 0;'>Este é um email automático, por favor não responda.</p>
+<p style='margin:5px 0;'>© 2026 Globo - Todos os direitos reservados</p>
+</td>
+</tr>
+
+</table>
+<!-- FIM CONTAINER -->
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>"
+);;
+
+// Enviar o email
+Office365Outlook.SendEmailV2(
+    varDestinatario;
+    varAssunto;
+    varCorpoHTML;
+    {
+        Importance: "Normal"
+    }
+);;
+
+Notify("Email enviado com sucesso!"; NotificationType.Success)
+
+
+;;
+
+Reset(TextInput7_2);;
+Reset(solicitante_saida_3);;
+Reset(TextInput7_2)
+
+;;Set(VarSolicitarCliente;false)
