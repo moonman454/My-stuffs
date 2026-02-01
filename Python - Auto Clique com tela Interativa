@@ -1,0 +1,132 @@
+import customtkinter as ctk
+import pyautogui
+import time
+import schedule
+import keyboard
+from pynput import mouse
+from threading import Thread
+from datetime import datetime
+
+# Configurações visuais do App
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
+
+class ServidorPowerBI(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+        self.title("PowerBI Server - v1.0")
+        self.geometry("500x650")
+        self.attributes("-topmost", True)
+        
+        self.pontos = []
+        self.rodando_servidor = False
+        
+        # --- Interface Gráfica ---
+        self.label = ctk.CTkLabel(self, text="Automação Power BI", font=("Roboto", 22, "bold"))
+        self.label.pack(pady=15)
+
+        self.btn_record = ctk.CTkButton(self, text="1. Gravar Sequência", command=self.start_record_thread, height=40)
+        self.btn_record.pack(pady=5)
+
+        self.btn_start = ctk.CTkButton(self, text="2. Iniciar Modo Servidor (2h)", command=self.toggle_server, fg_color="green", state="disabled", height=40)
+        self.btn_start.pack(pady=5)
+
+        self.status_alive = ctk.CTkLabel(self, text="Anti-Logoff: Desativado", text_color="gray", font=("Roboto", 11))
+        self.status_alive.pack(pady=5)
+
+        self.log_text = ctk.CTkTextbox(self, width=440, height=320, font=("Consolas", 12))
+        self.log_text.pack(pady=20, padx=20)
+        
+        self.add_log("Sistema iniciado e pronto.")
+
+    def add_log(self, mensagem):
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.log_text.configure(state="normal")
+        self.log_text.insert("end", f"[{timestamp}] {mensagem}\n")
+        self.log_text.configure(state="disabled")
+        self.log_text.see("end")
+
+    def start_record_thread(self):
+        Thread(target=self.record_logic, daemon=True).start()
+
+    def record_logic(self):
+        self.pontos = []
+        self.add_log("GRAVANDO... A janela vai minimizar.")
+        self.add_log("Instruções: Clique nos botões na ordem e aperte ESC para finalizar.")
+        self.iconify()
+        time.sleep(1)
+        
+        def ao_clicar(x, y, button, pressed):
+            if pressed and button == mouse.Button.left:
+                self.pontos.append((x, y))
+                self.add_log(f"Ponto capturado em: ({int(x)}, {int(y)})")
+
+        listener = mouse.Listener(on_click=ao_clicar)
+        listener.start()
+        keyboard.wait('esc')
+        listener.stop()
+
+        self.deiconify()
+        if self.pontos:
+            self.btn_start.configure(state="normal")
+            self.add_log(f"Sucesso: {len(self.pontos)} pontos gravados.")
+        else:
+            self.add_log("Erro: Nenhum ponto gravado.")
+
+    def toggle_server(self):
+        if not self.rodando_servidor:
+            self.rodando_servidor = True
+            self.btn_start.configure(text="PARAR SERVIDOR", fg_color="red")
+            self.btn_record.configure(state="disabled")
+            self.status_alive.configure(text="Anti-Logoff: ATIVO (Sessão Protegida)", text_color="#2ecc71")
+            
+            # Threads separadas para não travar a interface
+            Thread(target=self.server_executor, daemon=True).start()
+            Thread(target=self.anti_logoff_loop, daemon=True).start()
+        else:
+            self.rodando_servidor = False
+            self.btn_start.configure(text="Iniciar Modo Servidor", fg_color="green")
+            self.btn_record.configure(state="normal")
+            self.status_alive.configure(text="Anti-Logoff: Desativado", text_color="gray")
+            schedule.clear()
+            self.add_log("Servidor parado pelo usuário.")
+
+    def anti_logoff_loop(self):
+        """Simula atividade para o Windows não bloquear"""
+        while self.rodando_servidor:
+            keyboard.press_and_release('shift')
+            time.sleep(10)
+
+    def rotina_principal(self):
+        self.add_log(">>> INICIANDO CICLO DE ATUALIZAÇÃO")
+        try:
+            for i, ponto in enumerate(self.pontos):
+                if not self.rodando_servidor: break
+                
+                self.add_log(f"Executando clique {i+1} de {len(self.pontos)}...")
+                pyautogui.click(ponto)
+                
+                # Se for o primeiro clique (Geralmente o botão 'Atualizar'), espera 2 minutos
+                # Caso contrário, espera 10 segundos para carregar janelas
+                espera = 120 if i == 0 else 10
+                self.add_log(f"Aguardando {espera}s...")
+                time.sleep(espera)
+            
+            self.add_log(">>> CICLO FINALIZADO. Aguardando 2 horas para o próximo.")
+        except Exception as e:
+            self.add_log(f"ERRO CRÍTICO: {e}")
+
+    def server_executor(self):
+        # Executa a primeira vez imediatamente ao clicar no botão
+        self.rotina_principal()
+        
+        # Agenda as próximas para cada 2 horas
+        schedule.every(10).minutes.do(self.rotina_principal)
+        
+        while self.rodando_servidor:
+            schedule.run_pending()
+            time.sleep(1)
+
+if __name__ == "__main__":
+    app = ServidorPowerBI()
+    app.mainloop()
