@@ -1,0 +1,114 @@
+- btnDrawer:
+    Control: Button@0.0.45
+    Properties:
+      Appearance: ='ButtonCanvas.Appearance'.Primary
+      FontSize: =11
+      OnSelect: |-
+        =UpdateContext({ showDrawer: !showDrawer })
+      Text: ="Open Drawer"
+      Width: =110
+      X: =145
+      Y: =50
+- conBackground:
+    Control: Rectangle@2.3.0
+    Properties:
+      BorderColor: =RGBA(0, 18, 107, 1)
+      Fill: =RGBA(0, 0, 0, 0.2)
+      Height: =Parent.Height
+      Visible: =showDrawer
+      Width: =Parent.Width
+- conDrawer:
+    Control: GroupContainer@1.4.0
+    Variant: ManualLayout
+    Properties:
+      DropShadow: =DropShadow.Bold
+      Fill: =RGBA(255, 255, 255, 1)
+      Height: =766
+      PaddingLeft: =30
+      RadiusBottomLeft: =20
+      RadiusBottomRight: =0
+      RadiusTopLeft: =20
+      RadiusTopRight: =0
+      Visible: =showDrawer
+      Width: =324
+      X: =1042
+    Children:
+      - lblTitle:
+          Control: Text@0.0.51
+          Properties:
+            FontColor: =RGBA(0, 0, 0, 1)
+            Height: =27
+            Size: =16
+            Text: ="Create Project"
+            Weight: ='TextCanvas.Weight'.Bold
+            Width: =Parent.Width - 60
+            X: =Parent.Width/2 - Self.Width/2
+            Y: =30
+      - lblTitle2:
+          Control: Text@0.0.51
+          Properties:
+            FontColor: =RGBA(128, 128, 128, 1)
+            Height: =28
+            Size: =11
+            Text: ="Deploy your new project in one-click."
+            Width: =Parent.Width - 60
+            X: =Parent.Width/2 - Self.Width/2
+            Y: =58
+      - galDrawerFields:
+          Control: Gallery@2.15.0
+          Variant: Vertical
+          Properties:
+            Height: =Self.AllItemsCount * (Self.TemplateHeight + 10)
+            Items: |-
+              =Table(
+                { id: 1, labelText: "Name", hintText: "Name of your project" },
+                { id: 2, labelText: "Framework", hintText: "Email" }
+              )
+            ShowScrollbar: =false
+            TemplateSize: =80
+            Width: =Parent.Width - 60
+            X: =Parent.Width/2 - Self.Width/2
+            Y: =lblTitle2.Y + lblTitle2.Height + 30
+          Children:
+            - lblFieldLabel:
+                Control: Text@0.0.51
+                Properties:
+                  FontColor: =RGBA(0, 0, 0, 1)
+                  Height: =22
+                  Size: =11
+                  Text: =ThisItem.labelText
+                  Weight: ='TextCanvas.Weight'.Semibold
+                  Width: =Parent.TemplateWidth
+                  Y: =5
+            - txtFieldValue:
+                Control: TextInput@0.0.54
+                Properties:
+                  OnChange: |-
+                    =RemoveIf(colFormValues, id = ThisItem.id);
+                    Collect(colFormValues, { id: ThisItem.id, value: Self.Value });
+                  Placeholder: =ThisItem.hintText
+                  Value: =LookUp(colFormValues, id = ThisItem.id).value
+                  Width: =Parent.TemplateWidth
+                  Y: =lblFieldLabel.Y + lblFieldLabel.Height + 4
+      - btnCancel:
+          Control: Button@0.0.45
+          Properties:
+            Appearance: ='ButtonCanvas.Appearance'.Secondary
+            Height: =30
+            OnSelect: |-
+              =UpdateContext({ showDrawer: false })
+            Text: ="Cancel"
+            Width: =80
+            X: =30
+            Y: =Parent.Height - Self.Height - 15
+      - btnDeploy:
+          Control: Button@0.0.45
+          Properties:
+            Appearance: ='ButtonCanvas.Appearance'.Primary
+            Height: =30
+            OnSelect: |-
+              =UpdateContext({ showDrawer: false })
+            Text: ="OK"
+            Width: =80
+            X: =Parent.Width - Self.Width - 30
+            Y: =Parent.Height - Self.Height - 15
